@@ -15,13 +15,14 @@ export function releaseYear(timestamp: number | undefined) {
   return timestamp ? new Date(timestamp * 1000).getFullYear() : undefined
 }
 
-export async function searchGames(query: string): Promise<Game[]> {
-  const search = query.replace(/["\\]/g, '')
-  const res = await fetch('/api/igdb/games', {
+/** The server builds the IGDB query; only the search text is sent. See server/igdb.ts. */
+export async function searchGames(q: string): Promise<Game[]> {
+  const res = await fetch('/api/search', {
     method: 'POST',
-    body: `search "${search}"; fields name,cover.image_id,first_release_date; limit 20;`,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ q }),
   })
-  const data = (await res.json()) as Game[] & { error?: string; 0?: { cause?: string } }
-  if (!res.ok) throw new Error(data.error ?? data[0]?.cause ?? `IGDB error ${res.status}`)
+  const data = (await res.json()) as Game[] & { error?: string }
+  if (!res.ok) throw new Error(data.error ?? `Search failed (${res.status})`)
   return data
 }

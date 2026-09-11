@@ -12,6 +12,21 @@ export type Entry = {
   addedAt: number
 }
 
+/** Shape check for stored or imported data, so a bad file can't white-screen the app. */
+export function isEntryList(value: unknown): value is Entry[] {
+  return (
+    Array.isArray(value) &&
+    value.every(
+      (e) =>
+        typeof e === 'object' &&
+        e !== null &&
+        typeof e.id === 'number' &&
+        typeof e.name === 'string' &&
+        (STATUSES as readonly string[]).includes(e.status),
+    )
+  )
+}
+
 export function addGame(list: Entry[], game: Game): Entry[] {
   if (list.some((e) => e.id === game.id)) return list
   return [

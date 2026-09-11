@@ -18,10 +18,51 @@ one through the four states that actually matter.
 - **Colour-code your categories.** Ships with a preset palette, or pick your own colour per
   category. The accent drives that category's heading, count badge, and card stripes.
 - **Remembers itself.** Your list and colours persist in the browser's `localStorage` — no account,
-  no sign-in, no server storing your data.
+  no sign-in, no server storing your data. Export the lot as JSON from the Backup panel and import
+  it in another browser.
 
 `Dropped` is deliberate: admitting you're never going to finish something is how a backlog actually
 shrinks.
+
+## Scope, honestly
+
+This runs on your machine, for you. The list lives in one browser's `localStorage`, so there's no
+sync across devices and no accounts. IGDB access needs a Twitch client secret, which can never be
+shipped to a browser — so the credential lives server-side. [server/igdb.ts](server/igdb.ts) holds
+the OAuth token and builds the IGDB query; the client only ever sends `POST /api/search` with
+`{ "q": "search text" }`. In development a Vite middleware ([vite-igdb-plugin.ts](vite-igdb-plugin.ts))
+serves that route, so **the app only works under `npm run dev`**; a static production build has no
+proxy to talk to. Hosting it means wrapping `searchGames()` from `server/igdb.ts` in a serverless
+function the same way the plugin does (~10 lines), plus whatever rate limiting the host offers.
+
+## Setup
+
+1. Create an application at https://dev.twitch.tv/console/apps — IGDB authenticates through Twitch.
+2. Copy the example env file and fill in your two keys:
+   ```bash
+   cp .env.example .env.local
+   ```
+   ```
+   TWITCH_CLIENT_ID=your_client_id
+   TWITCH_CLIENT_SECRET=your_client_secret
+   ```
+   Put real keys **only** in `.env.local` — it is gitignored. Never in `.env.example`, which is
+   committed. No `VITE_` prefix on these names: that prefix is what would bundle them into the
+   client-side JavaScript.
+3. Start it:
+   ```bash
+   npm install
+   npm run dev
+   ```
+
+## Scripts
+
+| Command | What it does |
+| --- | --- |
+| `npm run dev` | Dev server plus the IGDB proxy — the way to actually run the app |
+| `npm test` | Backlog logic checks (`node --test`) |
+| `npm run lint` | ESLint |
+| `npm run build` | Type-check and build (UI only; no IGDB proxy in the output) |
 
 ## Built with
 

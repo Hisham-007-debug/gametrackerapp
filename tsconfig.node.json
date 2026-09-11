@@ -19,5 +19,5 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["vite.config.ts", "vite-igdb-plugin.ts", "src/*.test.ts"]
+  "include": ["vite.config.ts", "vite-igdb-plugin.ts", "server", "src/*.test.ts"]
 }

@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { STATUSES, addGame, removeGame, setStatus, type Entry, type Status } from './backlog.ts'
+import { useRef, useState } from 'react'
+import { STATUSES, addGame, isEntryList, removeGame, setStatus, type Entry, type Status } from './backlog.ts'
 import { DEFAULT_COLORS, isColorMap } from './colors.ts'
 import { coverUrl, releaseYear, searchGames, type Game } from './igdb.ts'
 import { useStored } from './useStored.ts'
@@ -55,20 +55,21 @@ function Card({
 }
 
 export default function App() {
-  const [entries, setEntries] = useStored<Entry[]>('backlog', [], Array.isArray)
+  const [entries, setEntries] = useStored<Entry[]>('backlog', [], isEntryList)
   const [colors, setColors] = useStored<Record<Status, string>>('colors', DEFAULT_COLORS, isColorMap)
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<Game[]>([])
   const [error, setError] = useState('')
   const [searching, setSearching] = useState(false)
   const [view, setView] = useState<'home' | 'results'>('home')
+  const fileInput = useRef<HTMLInputElement>(null)
 
   const owned = new Set(entries.map((e) => e.id))
   const custom = STATUSES.some((s) => colors[s] !== DEFAULT_COLORS[s])
 
   async function search(event: React.FormEvent) {
     event.preventDefault()
-    if (!query.trim()) return
+    if (query.trim().length < 2) return
     setSearching(true)
     setError('')
     try {
@@ -81,6 +82,30 @@ export default function App() {
       setResults([])
     } finally {
       setSearching(false)
+    }
+  }
+
+  function exportList() {
+    const blob = new Blob([JSON.stringify({ entries, colors }, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = Object.assign(document.createElement('a'), { href: url, download: 'gametracker.json' })
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  async function importList(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+    try {
+      const data = JSON.parse(await file.text())
+      if (!isEntryList(data?.entries) || !isColorMap(data?.colors)) throw new Error()
+      if (!confirm(`Replace your current list with ${data.entries.length} games from ${file.name}?`)) return
+      setEntries(data.entries)
+      setColors(data.colors)
+      setError('')
+    } catch {
+      setError(`${file.name} is not a GameTracker export.`)
     }
   }
 
@@ -108,6 +133,7 @@ export default function App() {
               placeholder="Search games…"
               autoComplete="off"
               spellCheck={false}
+              minLength={2}
             />
             <button type="submit" className="primary">
               {searching ? 'Searching…' : 'Search'}
@@ -157,6 +183,19 @@ export default function App() {
           </section>
         ) : (
           <section key="home" className="view">
+            <details className="settings">
+              <summary>Backup</summary>
+              <div className="swatches">
+                <button type="button" onClick={exportList}>
+                  Export JSON
+                </button>
+                <button type="button" onClick={() => fileInput.current?.click()}>
+                  Import JSON…
+                </button>
+                <input ref={fileInput} type="file" accept=".json,application/json" onChange={importList} hidden />
+              </div>
+            </details>
+
             {entries.length === 0 ? (
               <div className="hero">
                 <h2>Your Backlog Starts Here</h2>
